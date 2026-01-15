@@ -5,4 +5,16 @@ repositories:
  mivia_rover_description:
     type: git
     url: git@github.com:mivia-rover-nav2/mivia_rover_description.git
+ mivia_rover_localization:
+    type: git
+    url: git@github.com:mivia-rover-nav2/mivia_rover_localization.git
+ mivia_rover_sensing:
+    type: git
+    url: git@github.com:mivia-rover-nav2/mivia_rover_sensing.git
+ mivia_rover_mapping:
+    type: git
+    url: git@github.com:mivia-rover-nav2/mivia_rover_mapping.git
+ mivia_rover_bringup:
+    type: git
+    url: git@github.com:mivia-rover-nav2/mivia_rover_bringup.git
  
