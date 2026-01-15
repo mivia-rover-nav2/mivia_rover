@@ -43,3 +43,7 @@
 build/**
 log/**
 install/**
+
+# Aggiungo anche src/ perché git deve ignorare tutte le
+# sottocartelle che sono gestite con repo separate
+src/**
