@@ -18,5 +18,5 @@ repositories:
     type: git
     url: git@github.com:mivia-rover-nav2/mivia_rover_bringup.git
  mivia_rover_visualization:
-    type:git
+    type: git
     url: git@github.com:mivia-rover-nav2/mivia_rover_visualization.git
