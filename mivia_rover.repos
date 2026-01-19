@@ -23,3 +23,6 @@ repositories:
  mivia_rover_nav2_bringup:
     type: git
     url: git@github.com:mivia-rover-nav2/mivia_rover_nav2_bringup.git
+ mivia_rover_perception:
+    type: git
+    url: git@github.com:mivia-rover-nav2/mivia_rover_perception.git
