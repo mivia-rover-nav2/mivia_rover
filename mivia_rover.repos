@@ -26,3 +26,6 @@ repositories:
  mivia_rover_perception:
     type: git
     url: git@github.com:mivia-rover-nav2/mivia_rover_perception.git
+ mivia_rover_firmware:
+    type: git
+    url: git@github.com:mivia-rover-nav2/mivia_rover_firmware.git
