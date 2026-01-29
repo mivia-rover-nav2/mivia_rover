@@ -12,21 +12,29 @@ Type=simple
 # Load runtime configuration
 EnvironmentFile=/etc/mivia_rover/env/mivia_rover.env
 
-# Ensure the process starts from the workspace root (even if script already cd's)
-WorkingDirectory=/etc/mivia_rover
+# Run as the detected user (filled by installer)
+User=@MIVIA_ROVER_USER@
+Group=@MIVIA_ROVER_USER@
 
-# Start bringup
-ExecStart=/bin/bash -lc '/etc/mivia_rover/scripts/start_mivia_rover.sh'
+# Ensure a valid HOME for ROS 2 (~ expansion must never be relied upon)
+Environment=HOME=@MIVIA_ROVER_HOME@
 
-# Restart policy
+# Make ROS logging deterministic and independent from "~"
+# StateDirectory -> /var/lib/mivia_rover (created by systemd)
+#StateDirectory=mivia_rover
+#StateDirectoryMode=0755
+
+# Start from workspace root (filled by installer)
+WorkingDirectory=@MIVIA_ROVER_WS_PATH@
+
+ExecStart=/etc/mivia_rover/scripts/start_mivia_rover.sh
+
 Restart=on-failure
 RestartSec=2s
 
-# Logging
 StandardOutput=journal
 StandardError=journal
 
-# --- Optional but recommended: sane shutdown ---
 TimeoutStopSec=15s
 KillSignal=SIGINT
 

@@ -1,44 +1,26 @@
 [Unit]
-Description=Mivia Rover Platform Bringup
-Wants=network-online.target
-After=network-online.target
-
-Wants=set-network.service
-After=set-network.service
+Description=Configure Mivia Rover Network
+Wants=network-pre.target
+Before=network-online.target
+After=network-pre.target
 
 [Service]
-Type=simple
+Type=oneshot
 
-# Load runtime configuration
-EnvironmentFile=/etc/mivia_rover/env/mivia_rover.env
+# If you want to use env vars (optional):
+# EnvironmentFile=/etc/mivia_rover/env/mivia_rover.env
 
-# Run as the detected user (filled by installer)
-User=@MIVIA_ROVER_USER@
-Group=@MIVIA_ROVER_USER@
+ExecStart=/etc/mivia_rover/scripts/set_network.sh
 
-# Ensure a valid HOME for ROS 2 (~ expansion must never be relied upon)
-Environment=HOME=@MIVIA_ROVER_HOME@
+# Consider the service active after the script exits successfully
+RemainAfterExit=yes
 
-# Make ROS logging deterministic and independent from "~"
-# StateDirectory -> /var/lib/mivia_rover (created by systemd)
-StateDirectory=mivia_rover
-StateDirectoryMode=0755
-Environment=ROS_HOME=/var/lib/mivia_rover/ros
-Environment=ROS_LOG_DIR=/var/lib/mivia_rover/ros/log
-
-# Start from workspace root (filled by installer)
-WorkingDirectory=@MIVIA_ROVER_WS_PATH@
-
-ExecStart=/bin/bash -lc '/etc/mivia_rover/scripts/start_mivia_rover.sh'
-
+# Restart policy (applies if the oneshot fails)
 Restart=on-failure
 RestartSec=2s
 
 StandardOutput=journal
 StandardError=journal
-
-TimeoutStopSec=15s
-KillSignal=SIGINT
 
 [Install]
 WantedBy=multi-user.target
