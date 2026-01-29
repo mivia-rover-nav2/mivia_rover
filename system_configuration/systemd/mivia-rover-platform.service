@@ -1,0 +1,34 @@
+[Unit]
+Description=Mivia Rover Platform Bringup
+Wants=network-online.target
+After=network-online.target
+
+Wants=set-network.service
+After=set-network.service
+
+[Service]
+Type=simple
+
+# Load runtime configuration
+EnvironmentFile=/etc/mivia_rover/env/mivia_rover.env
+
+# Ensure the process starts from the workspace root (even if script already cd's)
+WorkingDirectory=/etc/mivia_rover
+
+# Start bringup
+ExecStart=/bin/bash -lc '/etc/mivia_rover/scripts/start_mivia_rover.sh'
+
+# Restart policy
+Restart=on-failure
+RestartSec=2s
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+# --- Optional but recommended: sane shutdown ---
+TimeoutStopSec=15s
+KillSignal=SIGINT
+
+[Install]
+WantedBy=multi-user.target
