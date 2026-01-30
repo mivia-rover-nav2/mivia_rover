@@ -1,6 +1,61 @@
 #!/usr/bin/env bash
-# Minimal CAN setup script (classic CAN @ 1Mbps, FD off)
-# Edit IFACES and BITRATE as needed.
+################################################################################
+#
+#  MIVIA Rover - CAN Network Configuration Script
+#  File: set_network.sh
+#  Version: 1.0
+#  Last Updated: January 2026
+#
+################################################################################
+#
+#  DESCRIPTION
+#  -----------
+#  Configures CAN (Controller Area Network) interfaces for rover hardware
+#  communication. Handles interface setup, bitrate configuration, and startup.
+#
+#  FUNCTIONALITY
+#  ----------
+#  • Detects and configures multiple CAN interfaces
+#  • Sets CAN bitrate (default: 1 Mbps classic CAN)
+#  • Optionally enables CAN FD mode with dual bitrates
+#  • Brings interfaces down, configures, and brings them back up
+#  • Validates iproute2 availability (ip command)
+#  • Gracefully handles missing interfaces without failure
+#
+#  CONFIGURABLE PARAMETERS
+#  -----------------------
+#  IFACES=("can0" "can1")  - CAN interfaces to configure (edit as needed)
+#  BITRATE="1000000"       - Bitrate in bps (1 Mbps default for classic CAN)
+#  FD="off"                - CAN FD mode: "off" (classic) or "on" (CAN FD)
+#  MTU=<value>             - (Optional) Maximum transmission unit override
+#
+#  USAGE
+#  -----
+#  # Via systemd (automatic during boot)
+#  systemctl start set-network.service
+#
+#  # Manual execution (with sudo)
+#  sudo /etc/mivia_rover/scripts/set_network.sh
+#
+#  EXECUTION CONTEXT
+#  -----------------
+#  Typically runs as oneshot systemd service before rover bringup.
+#  Can be executed manually for testing or reconfiguration.
+#  Failures are non-critical (rover can run without CAN if not needed).
+#
+#  DEPENDENCIES
+#  -----------
+#  • bash 4.0+
+#  • iproute2 package (ip command)
+#  • Linux kernel with CAN support
+#  • CAN hardware/virtual interfaces on system
+#
+#  EXIT CODES
+#  ----------
+#  0 - All configured interfaces set up successfully
+#  1 - Critical error (ip binary not found, invalid configuration, etc.)
+#
+################################################################################
 
 set -euo pipefail
 

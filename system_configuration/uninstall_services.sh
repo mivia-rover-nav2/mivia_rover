@@ -1,13 +1,57 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# uninstall_services.sh
+################################################################################
 #
-# Removes MIVIA Rover runtime configuration:
-#  - Stops and disables systemd services
-#  - Removes installed unit files from /etc/systemd/system
-#  - Removes /etc/mivia_rover/env and /etc/mivia_rover/scripts
-#  - Runs daemon-reload
-# ==============================================================================
+#  MIVIA Rover - System Configuration Uninstallation Script
+#  File: uninstall_services.sh
+#  Version: 1.0
+#  Last Updated: January 2026
+#
+################################################################################
+#
+#  DESCRIPTION
+#  -----------
+#  Cleanup and removal script for MIVIA Rover systemd services and runtime
+#  configuration. Safely removes all installed system components.
+#
+#  FUNCTIONALITY
+#  ----------
+#  • Gracefully stops running systemd services
+#  • Disables service autostart at boot
+#  • Removes service unit files from /etc/systemd/system
+#  • Deletes runtime configuration directory (/etc/mivia_rover/env)
+#  • Deletes runtime scripts directory (/etc/mivia_rover/scripts)
+#  • Performs systemd daemon reload
+#  • Includes safeguards against dangerous filesystem operations
+#
+#  USAGE
+#  -----
+#  sudo ./uninstall_services.sh
+#
+#  PRIVILEGES
+#  ----------
+#  MUST be executed with sudo/root privileges. Script enforces this check.
+#  Operating on system directories requires administrative access.
+#
+#  DEPENDENCIES
+#  -----------
+#  • bash 4.0+
+#  • systemctl (systemd)
+#  • Standard Unix utilities (rm, rmdir, etc.)
+#  • Root/sudo access
+#
+#  EXIT CODES
+#  ----------
+#  0 - Successful uninstallation
+#  1 - Error during uninstallation (permission denied, invalid path, etc.)
+#
+#  SAFETY
+#  ------
+#  • Validates all removal paths before deletion
+#  • Refuses to delete critical system directories (/, /etc, etc.)
+#  • Uses rm --one-file-system to prevent cross-filesystem accidents
+#  • Logs all operations with timestamps
+#
+################################################################################
 
 set -euo pipefail
 IFS=$'\n\t'

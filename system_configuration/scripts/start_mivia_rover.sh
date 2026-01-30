@@ -1,11 +1,60 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# start_mivia_rover.sh
+################################################################################
 #
-# Entry point for MIVIA Rover platform bringup.
-# Designed to be executed by systemd (EnvironmentFile already loaded),
-# but also runnable manually (will source /etc/mivia_rover/env/mivia_rover.env).
-# ==============================================================================
+#  MIVIA Rover - Bringup Startup Script
+#  File: start_mivia_rover.sh
+#  Version: 1.0
+#  Last Updated: January 2026
+#
+################################################################################
+#
+#  DESCRIPTION
+#  -----------
+#  Entry point for MIVIA Rover platform bringup. Manages environment setup,
+#  ROS 2 configuration, and launch of the rover's main control system.
+#
+#  FUNCTIONALITY
+#  ----------
+#  • Loads runtime environment variables from /etc/mivia_rover/env/mivia_rover.env
+#  • Validates prerequisites (workspace, ROS installation, required commands)
+#  • Sources ROS 2 underlay from /opt/ros/<ROS_DISTRO>/setup.bash
+#  • Sources ROS 2 overlay from workspace install/setup.bash
+#  • Configures ROS environment variables (ROS_DOMAIN_ID, RMW_IMPLEMENTATION)
+#  • Launches rover bringup package via ros2 launch command
+#  • Passes visualization enablement flag based on MIVIA_ENABLE_VIZ variable
+#
+#  EXECUTION CONTEXTS
+#  ------------------
+#  1. Via systemd: Environment already loaded, works seamlessly
+#  2. Manual execution: Auto-sources environment file from default location
+#
+#  USAGE
+#  -----
+#  # Via systemd (automatic at boot)
+#  systemctl start mivia-rover-platform.service
+#
+#  # Manual execution
+#  /etc/mivia_rover/scripts/start_mivia_rover.sh
+#
+#  ENVIRONMENT VARIABLES
+#  ---------------------
+#  Required:
+#    MIVIA_ROVER_WS_PATH       - Absolute path to ROS workspace
+#    MIVIA_BRINGUP_PACKAGE     - ROS 2 package name for bringup
+#    MIVIA_BRINGUP_LAUNCH      - Launch file name (e.g., launch.py)
+#    ROS_DISTRO                - ROS 2 distribution name (humble, iron, etc.)
+#
+#  Optional:
+#    ROS_DOMAIN_ID             - ROS domain identifier (default: 0)
+#    RMW_IMPLEMENTATION        - DDS implementation (cyclonedds, fastdds, etc.)
+#    MIVIA_ENABLE_VIZ          - Visualization flag (true/false, default: false)
+#
+#  EXIT CODES
+#  ----------
+#  0 - Rover running (normal systemd behavior: exec replaces process)
+#  1 - Initialization error (validation failed, missing dependencies, etc.)
+#
+################################################################################
 
 set -euo pipefail
 IFS=$'\n\t'

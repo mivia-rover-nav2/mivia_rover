@@ -1,18 +1,52 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# reload_services.sh
+################################################################################
 #
-# Installs/updates MIVIA Rover runtime configuration:
-#  - Cleans and recreates /etc/mivia_rover/{env,scripts}
-#  - Installs mivia_rover.env (base) + appends:
-#       MIVIA_ROVER_WS_PATH=<abs path>
-#       MIVIA_ROVER_USER=<invoking user>
-#       MIVIA_ROVER_HOME=<invoking home>
-#  - Installs runtime scripts into /etc/mivia_rover/scripts
-#  - Installs systemd units into /etc/systemd/system, daemon-reload, enable, restart
+#  MIVIA Rover - System Configuration Installation Script
+#  File: reload_services.sh
+#  Version: 1.0
+#  Last Updated: January 2026
 #
-# Can be executed WITHOUT sudo: it will request elevation at runtime.
-# ==============================================================================
+################################################################################
+#
+#  DESCRIPTION
+#  -----------
+#  Installation and update script for MIVIA Rover systemd services and runtime
+#  configuration. Automates deployment of all system integration components.
+#
+#  FUNCTIONALITY
+#  ----------
+#  • Creates and manages /etc/mivia_rover directory structure
+#  • Installs environment configuration with user-specific variables
+#  • Deploys runtime scripts for rover bringup and network configuration
+#  • Registers and enables systemd services (mivia-rover-platform, set-network)
+#  • Performs systemd daemon reload and service restart
+#  • Configures environment variables:
+#      - MIVIA_ROVER_WS_PATH: Absolute workspace path
+#      - MIVIA_ROVER_USER: Service execution user
+#      - MIVIA_ROVER_HOME: User home directory
+#      - ROS_DOMAIN_ID: ROS 2 domain ID (from environment or default)
+#
+#  USAGE
+#  -----
+#  ./reload_services.sh
+#
+#  PRIVILEGES
+#  ----------
+#  Executable without sudo; requests sudoers elevation at runtime via sudo.
+#  User must have sudoers privileges for system directories.
+#
+#  DEPENDENCIES
+#  -----------
+#  • bash 4.0+
+#  • systemctl (systemd)
+#  • Standard Unix utilities (install, mkdir, rm, etc.)
+#
+#  EXIT CODES
+#  ----------
+#  0 - Successful installation/update
+#  1 - Error during installation (see logs for details)
+#
+################################################################################
 
 set -euo pipefail
 IFS=$'\n\t'
@@ -51,6 +85,7 @@ command_exists() {
 
 ensure_root_with_sudo() {
   # If not root, re-exec via sudo while preserving the identity of the invoking user.
+  # Also preserve ROS_DOMAIN_ID if exported by the invoking user.
   if [ "${EUID}" -ne 0 ]; then
     if ! command_exists sudo; then
       die "sudo not found. Please install sudo or run this script as root."
@@ -74,7 +109,7 @@ ensure_root_with_sudo() {
     export INVOKING_HOME="${inv_home}"
 
     log "Requesting sudo elevation (invoking user: ${INVOKING_USER})..."
-    exec sudo --preserve-env=INVOKING_USER,INVOKING_HOME bash "${SCRIPT_PATH}" "$@"
+    exec sudo --preserve-env=INVOKING_USER,INVOKING_HOME,ROS_DOMAIN_ID bash "${SCRIPT_PATH}" "$@"
   fi
 }
 
@@ -155,6 +190,16 @@ install_env() {
   upsert_env_kv "MIVIA_ROVER_WS_PATH" "${ws_root}"
   upsert_env_kv "MIVIA_ROVER_USER" "${inv_user}"
   upsert_env_kv "MIVIA_ROVER_HOME" "${inv_home}"
+
+  # ROS_DOMAIN_ID: capture from invoking environment if exported, else default to 0.
+  # Accept only unsigned integer values to prevent unexpected content.
+  if [ -n "${ROS_DOMAIN_ID:-}" ] && printf '%s' "${ROS_DOMAIN_ID}" | grep -qE '^[0-9]+$'; then
+    upsert_env_kv "ROS_DOMAIN_ID" "${ROS_DOMAIN_ID}"
+    log "Captured ROS_DOMAIN_ID=${ROS_DOMAIN_ID} from invoking environment."
+  else
+    upsert_env_kv "ROS_DOMAIN_ID" "0"
+    log "ROS_DOMAIN_ID not exported/invalid in invoking environment. Defaulting to ROS_DOMAIN_ID=0."
+  fi
 
   chmod 0644 "${INSTALL_ENV_FILE}"
   log "Installed env: ${INSTALL_ENV_FILE}"

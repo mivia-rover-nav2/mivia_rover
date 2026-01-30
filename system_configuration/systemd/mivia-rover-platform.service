@@ -1,28 +1,77 @@
-[Unit]
-Description=Mivia Rover Platform Bringup
-Wants=network-online.target
-After=network-online.target
-
-Wants=set-network.service
-After=set-network.service
+################################################################################
+#
+#  MIVIA Rover - Platform Bringup Systemd Service Unit
+#  File: mivia-rover-platform.service
+#  Version: 1.0
+#  Last Updated: January 2026
+#
+################################################################################
+#
+#  DESCRIPTION
+#  -----------
+#  Systemd service unit for MIVIA Rover platform bringup. Defines service
+#  startup behavior, dependencies, environment, and recovery policies.
+#
+#  FUNCTIONALITY
+#  ----------
+#  • Launches /etc/mivia_rover/scripts/start_mivia_rover.sh
+#  • Runs as the detected user (not root) for security
+#  • Sets working directory to ROS workspace root
+#  • Loads environment configuration from /etc/mivia_rover/env/mivia_rover.env
+#  • Depends on set-network.service (network pre-configuration)
+#  • Auto-restarts on failure with 2-second delay
+#  • Graceful shutdown with 15-second timeout (SIGINT signal)
+#  • Enabled for multi-user.target (standard system boot)
+#
+#  LIFECYCLE
+#  --------
+#  Boot:      set-network.service → mivia-rover-platform.service
+#  Shutdown:  Graceful SIGINT → 15s timeout → SIGKILL
+#  Failure:   Wait 2s → Restart (infinite retries by default)
+#
+#  MANAGEMENT
+#  ----------
+#  # Check status
+#  systemctl status mivia-rover-platform.service
+#
+#  # View logs
+#  journalctl -u mivia-rover-platform.service -f
+#
+#  # Manual control
+#  sudo systemctl restart mivia-rover-platform.service
+#  sudo systemctl stop mivia-rover-platform.service
+#  sudo systemctl start mivia-rover-platform.service
+#
+#  # Enable/disable autostart
+#  sudo systemctl enable mivia-rover-platform.service
+#  sudo systemctl disable mivia-rover-platform.service
+#
+#  DEPENDENCIES
+#  -----------
+#  • systemd (service manager)
+#  • set-network.service (CAN network configuration)
+#  • network.target and network-online.target
+#  • /etc/mivia_rover/scripts/start_mivia_rover.sh
+#  • /etc/mivia_rover/env/mivia_rover.env
+#
+#  INSTALLATION
+#  -----------
+#  Installed by: reload_services.sh
+#  Target location: /etc/systemd/system/mivia-rover-platform.service
+#
+################################################################################
 
 [Service]
 Type=simple
 
 # Load runtime configuration
-EnvironmentFile=/etc/mivia_rover/env/mivia_rover.env
+#EnvironmentFile=/etc/mivia_rover/env/mivia_rover.env
 
 # Run as the detected user (filled by installer)
 User=@MIVIA_ROVER_USER@
-Group=@MIVIA_ROVER_USER@
 
 # Ensure a valid HOME for ROS 2 (~ expansion must never be relied upon)
-Environment=HOME=@MIVIA_ROVER_HOME@
-
-# Make ROS logging deterministic and independent from "~"
-# StateDirectory -> /var/lib/mivia_rover (created by systemd)
-#StateDirectory=mivia_rover
-#StateDirectoryMode=0755
+#Environment=HOME=@MIVIA_ROVER_HOME@
 
 # Start from workspace root (filled by installer)
 WorkingDirectory=@MIVIA_ROVER_WS_PATH@
@@ -31,9 +80,6 @@ ExecStart=/etc/mivia_rover/scripts/start_mivia_rover.sh
 
 Restart=on-failure
 RestartSec=2s
-
-StandardOutput=journal
-StandardError=journal
 
 TimeoutStopSec=15s
 KillSignal=SIGINT

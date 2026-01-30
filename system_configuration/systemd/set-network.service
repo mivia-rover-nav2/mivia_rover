@@ -1,8 +1,69 @@
-[Unit]
-Description=Configure Mivia Rover Network
-Wants=network-pre.target
-Before=network-online.target
-After=network-pre.target
+################################################################################
+#
+#  MIVIA Rover - Network Configuration Systemd Service Unit
+#  File: set-network.service
+#  Version: 1.0
+#  Last Updated: January 2026
+#
+################################################################################
+#
+#  DESCRIPTION
+#  -----------
+#  Systemd service unit for MIVIA Rover CAN network pre-configuration. Handles
+#  early-boot network setup before rover bringup service starts.
+#
+#  FUNCTIONALITY
+#  ----------
+#  • Executes /etc/mivia_rover/scripts/set_network.sh during boot
+#  • Configures CAN interfaces with appropriate bitrates
+#  • Oneshot service type (runs once and exits)
+#  • RemainAfterExit ensures service remains "active" after completion
+#  • Auto-restarts on failure with 2-second delay
+#  • Runs before network-online.target (early boot phase)
+#  • Dependency for mivia-rover-platform.service
+#
+#  BOOT SEQUENCE
+#  ----------
+#  1. network-pre.target
+#  2. set-network.service executes
+#  3. network-online.target (reached)
+#  4. mivia-rover-platform.service starts (after completing #2)
+#  5. multi-user.target reached
+#
+#  MANAGEMENT
+#  ----------
+#  # Check status
+#  systemctl status set-network.service
+#
+#  # View logs
+#  journalctl -u set-network.service -n 50
+#
+#  # Manual run
+#  sudo systemctl restart set-network.service
+#
+#  # Enable/disable
+#  sudo systemctl enable set-network.service
+#  sudo systemctl disable set-network.service
+#
+#  DEPENDENCIES
+#  -----------
+#  • systemd (service manager)
+#  • network-pre.target
+#  • /etc/mivia_rover/scripts/set_network.sh
+#  • Linux kernel with CAN support
+#  • iproute2 (ip command)
+#
+#  INSTALLATION
+#  -----------
+#  Installed by: reload_services.sh
+#  Target location: /etc/systemd/system/set-network.service
+#
+#  FAILURE HANDLING
+#  ----------------
+#  Non-critical service: mivia-rover-platform may still start even if this
+#  service fails (useful for systems without CAN hardware).
+#
+################################################################################
 
 [Service]
 Type=oneshot
