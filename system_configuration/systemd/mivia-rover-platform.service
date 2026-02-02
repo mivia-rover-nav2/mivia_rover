@@ -61,17 +61,27 @@
 #
 ################################################################################
 
+[Unit]
+Description=MIVIA Rover Platform Bringup
+Documentation=man:systemd.service(5)
+Wants=network-online.target NetworkManager.service
+After=network-online.target NetworkManager.service
+
+# Ensure CAN/network pre-configuration completes first
+Wants=set-network.service
+After=set-network.service
+
 [Service]
 Type=simple
 
-# Load runtime configuration
-#EnvironmentFile=/etc/mivia_rover/env/mivia_rover.env
+# Load runtime configuration (recommended to keep enabled)
+EnvironmentFile=/etc/mivia_rover/env/mivia_rover.env
 
 # Run as the detected user (filled by installer)
 User=@MIVIA_ROVER_USER@
 
-# Ensure a valid HOME for ROS 2 (~ expansion must never be relied upon)
-#Environment=HOME=@MIVIA_ROVER_HOME@
+# Ensure a valid HOME for ROS 2
+Environment=HOME=@MIVIA_ROVER_HOME@
 
 # Start from workspace root (filled by installer)
 WorkingDirectory=@MIVIA_ROVER_WS_PATH@
@@ -83,6 +93,9 @@ RestartSec=2s
 
 TimeoutStopSec=15s
 KillSignal=SIGINT
+
+# (Optional but recommended) Avoid systemd killing children too early
+KillMode=mixed
 
 [Install]
 WantedBy=multi-user.target
