@@ -8,7 +8,7 @@ repositories:
  mivia_rover_localization:
     type: git
     url: git@github.com:mivia-rover-nav2/mivia_rover_localization.git
-    version: localization_adapter_cpp
+    version: main
  mivia_rover_sensing:
     type: git
     url: git@github.com:mivia-rover-nav2/mivia_rover_sensing.git
