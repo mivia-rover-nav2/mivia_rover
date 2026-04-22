@@ -7,11 +7,11 @@ Rover chassis and integrates a purpose-built electronics/firmware layer
 together with a modular ROS 2 software stack, deliberately avoiding
 off-the-shelf embedded control solutions in favor of an architecture
 tailored to off-road autonomy.
-
 This repository hosts the **high-level software stack** (ROS 2 Humble) that
 runs on the onboard Jetson AGX Orin: perception, localization, planning,
 control, and the CAN-based communication with the embedded firmware.
 
+![MiviaRover](media/rover_photo.jpg)
 ---
 
 ## Platform at a Glance
