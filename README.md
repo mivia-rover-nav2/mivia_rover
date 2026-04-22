@@ -62,9 +62,12 @@ Logical layers:
 | **Visualization** | Preconfigured RViz sessions | `mivia_rover_visualization` |
 | **Bringup** | Top-level orchestrator; conditionally includes module launch files | `mivia_rover_bringup` |
 
-A companion repository hosts the embedded firmware (STM32F767ZI,
-FreeRTOS, custom PCB), which exposes the same DBC-specified CAN interface
-consumed by `mivia_rover_can`.
+The embedded firmware lives in the companion repository [mivia_rover_firmware](https://github.com/mivia-rover-nav2/mivia_rover_firmware.git)
+and exposes the same DBC-specified CAN interface consumed by
+`mivia_rover_can`. The PCB **fabrication files** (Gerbers, BOM,
+pick-and-place) are published on
+[Google Drive](https://drive.google.com/drive/folders/1ARMQzZB3NQeuOxfd8ZF61aHZKuGPhNJM?usp=sharing)
+so the board can be reproduced end-to-end.
 
 ---
 
@@ -150,24 +153,33 @@ Additional non-ROS dependencies (ZED SDK, CUDA, UWB udev rules) must be
 installed manually per the vendor instructions — see the per-package
 READMEs under [src/](src/).
 
-### 3. Build
+### 3. Build and launch — the fast path
+
+For day-to-day development the repository ships
+[source_and_rebuild.bash](source_and_rebuild.bash), a one-shot helper that
+wipes any stale artifacts, performs a symlink-install `colcon` build,
+sources the overlay, and launches the full bringup:
+
+```bash
+source source_and_rebuild.bash
+```
+
+This is the recommended way to go from a fresh checkout (or after pulling
+updates) to a running rover in a single command — no need to remember the
+individual `colcon` / `source` / `ros2 launch` invocations.
+
+### 4. Build and launch — manual steps
+
+If you prefer granular control over the build/launch cycle:
 
 ```bash
 colcon build --symlink-install
 source install/setup.bash
-```
-
-The helper [source_and_rebuild.bash](source_and_rebuild.bash) performs a
-clean rebuild and launches the full bringup in one shot; use
-[clear_ws.sh](clear_ws.sh) to wipe `build/`, `install/`, and `log/`.
-
-### 4. Launch
-
-Full system bringup (every module enabled):
-
-```bash
 ros2 launch mivia_rover_bringup launch.py
 ```
+
+Use [clear_ws.sh](clear_ws.sh) to wipe `build/`, `install/`, and `log/`
+without rebuilding.
 
 [mivia_rover_bringup/launch/launch.py](src/mivia_rover_bringup/launch/launch.py)
 is a conditional orchestrator: each module can be toggled or
