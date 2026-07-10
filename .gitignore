@@ -43,3 +43,6 @@
 build/**
 log/**
 install/**
+
+# Local files
+*.local.*
