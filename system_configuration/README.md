@@ -4,10 +4,11 @@ This module manages the installation and configuration of the automatic startup 
 
 ## System Overview
 
-The configuration system automates two main tasks:
+The configuration system automates three main tasks:
 
 1. **CAN Network Configuration**: Initializes the CAN interfaces (`can0`, `can1`) with appropriate parameters
-2. **Rover Bringup Launch**: Starts the rover's main control software as a systemd service
+2. **Sensor udev Rules**: Installs stable device symlinks (e.g. `/dev/xsens_imu`, `/dev/dwm1001_uwb`) from `mivia_rover_sensing/udev/`, if that repo is present in the workspace
+3. **Rover Bringup Launch**: Starts the rover's main control software as a systemd service
 
 The system is designed to:
 - Simplify deployment on a robotic system
@@ -131,9 +132,10 @@ The script:
 2. Creates directories `/etc/mivia_rover/env` and `/etc/mivia_rover/scripts`
 3. Installs the customized environment configuration file
 4. Installs runtime scripts
-5. Installs systemd services
-6. Executes `systemctl daemon-reload` and `systemctl enable` for both services
-7. Starts the services
+5. Installs sensor udev rules from `mivia_rover_sensing/udev/*.rules` into `/etc/udev/rules.d/` and reloads udev (skipped with a log message if `mivia_rover_sensing` isn't in the workspace)
+6. Installs systemd services
+7. Executes `systemctl daemon-reload` and `systemctl enable` for both services
+8. Starts the services
 
 ### Expected Output
 

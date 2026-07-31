@@ -18,6 +18,8 @@
 #  • Creates and manages /etc/mivia_rover directory structure
 #  • Installs environment configuration with user-specific variables
 #  • Deploys runtime scripts for rover bringup and network configuration
+#  • Installs sensor udev rules from mivia_rover_sensing/udev/ (stable device
+#    symlinks for the Xsens IMU/GNSS and DWM1001 UWB tag), if present
 #  • Registers and enables systemd services (mivia-rover-platform, set-network)
 #  • Performs systemd daemon reload and service restart
 #  • Configures environment variables:
@@ -64,6 +66,11 @@ readonly SRC_SCRIPTS_DIR="${SCRIPT_DIR}/scripts"
 readonly SRC_SYSTEMD_DIR="${SCRIPT_DIR}/systemd"
 
 readonly SYSTEMD_TARGET_DIR="/etc/systemd/system"
+readonly UDEV_RULES_TARGET_DIR="/etc/udev/rules.d"
+
+# Sensor udev rules live in the mivia_rover_sensing repo (vcs-imported under
+# src/), not in this top-level repo - resolved at runtime relative to WS_ROOT.
+readonly SENSING_UDEV_SRC_DIR_REL="src/mivia_rover_sensing/udev"
 
 readonly SERVICES=(
   "mivia-rover-platform.service"
@@ -236,6 +243,47 @@ render_unit_template() {
     "${src}" > "${dst}"
 }
 
+install_udev_rules() {
+  # Optional by design: mivia_rover_sensing may not be imported yet (e.g. a
+  # workspace checkout that only has some repos), and not every host needs
+  # every sensor rule. Missing source dir/files are logged and skipped rather
+  # than treated as a fatal error.
+  local udev_src_dir="${WS_ROOT}/${SENSING_UDEV_SRC_DIR_REL}"
+
+  if [ ! -d "${udev_src_dir}" ]; then
+    log "No udev rules dir at ${udev_src_dir} (mivia_rover_sensing not imported?). Skipping udev rules."
+    return 0
+  fi
+
+  if ! command_exists udevadm; then
+    log "udevadm not found: skipping udev rules installation (non-systemd/non-Linux host?)."
+    return 0
+  fi
+
+  shopt -s nullglob
+  local rule_files=("${udev_src_dir}"/*.rules)
+  shopt -u nullglob
+
+  if [ "${#rule_files[@]}" -eq 0 ]; then
+    log "No .rules files found in ${udev_src_dir}. Skipping udev rules installation."
+    return 0
+  fi
+
+  mkdir -p "${UDEV_RULES_TARGET_DIR}"
+
+  local rule_file dst
+  for rule_file in "${rule_files[@]}"; do
+    dst="${UDEV_RULES_TARGET_DIR}/$(basename "${rule_file}")"
+    cp -f "${rule_file}" "${dst}"
+    chmod 0644 "${dst}"
+    log "Installed udev rule: ${dst}"
+  done
+
+  udevadm control --reload-rules
+  udevadm trigger
+  log "udev rules reloaded (re-plug sensors if their symlink doesn't appear immediately)."
+}
+
 install_systemd_units() {
   [ -d "${SRC_SYSTEMD_DIR}" ] || die "systemd dir not found: ${SRC_SYSTEMD_DIR}"
 
@@ -301,6 +349,7 @@ main() {
 
   install_env "${WS_ROOT}" "${INV_USER}" "${INV_HOME}"
   install_scripts
+  install_udev_rules
   install_systemd_units
 
   log "Done."
