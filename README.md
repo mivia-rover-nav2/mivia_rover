@@ -115,6 +115,12 @@ which references the individual per-package repositories under the
   - Stereolabs ZED SDK installed and matched against the CUDA version
     shipped on the Jetson.
   - DWM1001 UWB tag connected via USB (and a deployed anchor infrastructure).
+  - Xsens MTi-8 IMU/GNSS (RTK-capable) connected via USB, plus an NTRIP
+    caster subscription (credentials in `ntrip-param.yaml`) for RTK
+    corrections. Both the Xsens and the DWM1001 need their udev rules
+    installed for stable device paths — run
+    [`mivia_rover_sensing/udev/install_udev_rules.sh`](src/mivia_rover_sensing/udev/install_udev_rules.sh)
+    with `sudo` (also done automatically by `system_configuration/reload_services.sh`).
 - **Third-party ROS 2 packages:** `robot_localization`, `nav2_*`,
   `ros2_control`, `ros2_controllers`, `diff_drive_controller`,
   `ros2_socketcan` (pinned to v1.3.0 by the `.repos` manifest).
