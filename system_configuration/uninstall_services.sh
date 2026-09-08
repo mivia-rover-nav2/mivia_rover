@@ -60,6 +60,7 @@ readonly INSTALL_ROOT="/etc/mivia_rover"
 readonly INSTALL_ENV_DIR="${INSTALL_ROOT}/env"
 readonly INSTALL_SCRIPTS_DIR="${INSTALL_ROOT}/scripts"
 readonly SYSTEMD_TARGET_DIR="/etc/systemd/system"
+readonly SYSCTL_TARGET_DIR="/etc/sysctl.d"
 
 readonly SERVICES=(
   "mivia-rover-platform.service"
@@ -120,6 +121,14 @@ main() {
   require_root
 
   remove_systemd_units
+
+  # Remove the network sysctl drop-in (best effort; leaves udev rules in place,
+  # same as install).
+  if [ -f "${SYSCTL_TARGET_DIR}/60-mivia-rover-network.conf" ]; then
+    rm -f "${SYSCTL_TARGET_DIR}/60-mivia-rover-network.conf"
+    log "Removed: ${SYSCTL_TARGET_DIR}/60-mivia-rover-network.conf"
+    command_exists sysctl && sysctl --system >/dev/null 2>&1 || true
+  fi
 
   if [ -d "$INSTALL_ENV_DIR" ]; then
     safe_rm_rf "$INSTALL_ENV_DIR"

@@ -6,7 +6,7 @@
 ################################################################################
 
 [Unit]
-Description=MIVIA Rover Network Bringup (CAN + optional WiFi)
+Description=MIVIA Rover Network Bringup (CAN + Velodyne VLP-16 static IP + optional WiFi)
 Wants=NetworkManager.service
 After=NetworkManager.service
 

@@ -7,8 +7,10 @@ This module manages the installation and configuration of the automatic startup 
 The configuration system automates three main tasks:
 
 1. **CAN Network Configuration**: Initializes the CAN interfaces (`can0`, `can1`) with appropriate parameters
-2. **Sensor udev Rules**: Installs stable device symlinks (e.g. `/dev/xsens_imu`, `/dev/dwm1001_uwb`) from `mivia_rover_sensing/udev/`, if that repo is present in the workspace
-3. **Rover Bringup Launch**: Starts the rover's main control software as a systemd service
+2. **LiDAR Network Configuration**: Installs a persistent NetworkManager profile (`mivia-lidar`) giving the Velodyne VLP-16's wired interface a static IP in the sensor's subnet, bouncing the link first (the Jetson AGX Orin PHY needs it to negotiate with the sensor)
+3. **Kernel Network Tuning**: Installs `60-mivia-rover-network.conf` into `/etc/sysctl.d/` (25 MB UDP receive buffers so the VLP-16 point cloud does not stall under load)
+4. **Sensor udev Rules**: Installs stable device symlinks (e.g. `/dev/xsens_imu`, `/dev/dwm1001_uwb`) from `mivia_rover_sensing/udev/`, if that repo is present in the workspace
+5. **Rover Bringup Launch**: Starts the rover's main control software as a systemd service
 
 The system is designed to:
 - Simplify deployment on a robotic system
@@ -27,7 +29,9 @@ system_configuration/
 │   └── mivia_rover.env               # Environment configuration (variables)
 ├── scripts/
 │   ├── start_mivia_rover.sh          # Bringup entry point
-│   └── set_network.sh                # CAN configuration script
+│   └── set_network.sh                # CAN + LiDAR + WiFi configuration script
+├── sysctl/
+│   └── 60-mivia-rover-network.conf   # UDP buffer tuning (Velodyne VLP-16 / DDS)
 └── systemd/
     ├── mivia-rover-platform.service  # Bringup service
     └── set-network.service           # Network configuration service
@@ -55,19 +59,32 @@ During installation, these values are automatically augmented with:
 
 ### `scripts/set_network.sh`
 
-Configures CAN interfaces for communication with rover hardware.
+Configures CAN interfaces, the Velodyne VLP-16 wired link, and (optionally)
+WiFi.
 
-**Configurable parameters:**
+**Configurable parameters** (via `env/mivia_rover.env`):
 ```bash
-IFACES=("can0" "can1")  # CAN interfaces to configure
-BITRATE="1000000"       # Bitrate in bps (1 Mbps)
-FD="off"                # CAN FD enabled (on/off)
+ENABLE_CAN_BUS=true                  # gate for CAN bring-up
+CAN_IFACES=can0,can1                 # CAN interfaces to configure
+CAN_BITRATE=1000000                  # bitrate in bps (1 Mbps)
+CAN_FD=off                           # CAN FD (on/off)
+
+ENABLE_LIDAR_NET=true                # gate for the Velodyne static IP
+LIDAR_IFACE=eth0                     # Jetson wired NIC the VLP-16 is plugged into
+LIDAR_HOST_IP=192.168.1.100/24       # host address (CIDR), same subnet as the sensor
+LIDAR_DEVICE_IP=192.168.1.201        # sensor IP (factory default), used by the driver
 ```
 
 **Behavior:**
-- Brings down CAN interfaces
-- Configures bitrate and CAN parameters
-- Brings up the interfaces
+- **CAN:** brings each interface down, sets bitrate / FD, brings it back up.
+  Missing interfaces are logged and skipped.
+- **LiDAR:** creates or updates a persistent NetworkManager profile
+  (`mivia-lidar`) with `ipv4.method manual` / `ipv4.never-default yes` on
+  `LIDAR_IFACE`, then activates it. Requires `nmcli`; if `LIDAR_IFACE` is
+  absent the step is logged and skipped. Pointing the sensor's UDP
+  destination at `LIDAR_HOST_IP` (via its web UI on `LIDAR_DEVICE_IP`) is a
+  one-time manual step and is recommended over the factory broadcast.
+- **WiFi:** unchanged (see `WIFI_*` variables).
 
 ### `scripts/start_mivia_rover.sh`
 
@@ -277,6 +294,14 @@ journalctl -u mivia-rover-platform.service -n 100
    - The `set-network.sh` service fails silently if interfaces don't exist
    - For debugging: manually run `sudo /etc/mivia_rover/scripts/set_network.sh`
 
+5. **Velodyne VLP-16 not publishing**
+   - Check the host address is up: `ip addr show "$LIDAR_IFACE"` should list
+     `LIDAR_HOST_IP`; `nmcli con show mivia-lidar` should be present/active
+   - Ping the sensor: `ping 192.168.1.201`
+   - Confirm packets arrive: `sudo tcpdump -ni "$LIDAR_IFACE" udp port 2368`
+   - Set `LIDAR_IFACE` to the real NIC name (`ip link`) and re-run
+     `reload_services.sh` (or `sudo /etc/mivia_rover/scripts/set_network.sh`)
+
 ### Rover doesn't start at boot
 
 1. Verify that services are enabled:
@@ -341,6 +366,9 @@ After installation, the system will have the following variables available at ru
 | `MIVIA_BRINGUP_PACKAGE` | mivia_rover.env | Launch package |
 | `MIVIA_BRINGUP_LAUNCH` | mivia_rover.env | Launch file |
 | `RMW_IMPLEMENTATION` | mivia_rover.env | ROS middleware (optional) |
+| `ENABLE_CAN_BUS` | mivia_rover.env | Gate for CAN bring-up |
+| `ENABLE_LIDAR_NET`, `LIDAR_IFACE`, `LIDAR_HOST_IP`, `LIDAR_DEVICE_IP` | mivia_rover.env | Velodyne VLP-16 wired static IP |
+| `WIFI_AUTO_CONNECT`, `WIFI_SSID`, `WIFI_PASSWORD`, `WIFI_IFNAME`, `WIFI_TIMEOUT` | mivia_rover.env | Optional WiFi auto-join |
 
 ## Security
 

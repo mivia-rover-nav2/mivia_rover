@@ -29,6 +29,8 @@ control, and the CAN-based communication with the embedded firmware.
     IMU) — primary exteroceptive sensor.
   - **Qorvo MDEK1001 (DWM1001)** UWB kit — absolute positioning over a
     deployable anchor infrastructure.
+  - **Velodyne VLP-16** 3D LiDAR (Gigabit Ethernet) — 360° geometric
+    perception.
   - **Quadrature encoders** on each motor shaft — wheel odometry.
 - **Communication boundary:** high-level ⇄ low-level traffic is carried over
   standard 11-bit CAN at 1 Mbit/s, formalized by a **DBC file** acting as a
@@ -52,7 +54,7 @@ Logical layers:
 | Layer | Purpose | Key packages |
 |-------|---------|--------------|
 | **Description** | URDF/Xacro model, TF tree, meshes, RViz configs | `mivia_rover_description` |
-| **Sensing** | Raw sensor drivers (ZED 2i, DWM1001 UWB) | `mivia_rover_sensing` |
+| **Sensing** | Raw sensor drivers (ZED 2i, DWM1001 UWB, Xsens MTi-8, Velodyne VLP-16) | `mivia_rover_sensing` |
 | **Perception** | Ground segmentation (Patchwork++), local geometric representation feeding Nav2 costmaps | `mivia_rover_perception` |
 | **Localization** | Planar EKF fusing wheel odometry, ZED IMU, and UWB; quality-aware UWB adapter with heteroscedastic covariance | `mivia_rover_localization` |
 | **Navigation** | Domain-adapted Nav2 configuration: global/local planners, behavior tree, velocity smoother | `mivia_rover_nav2_bringup` |
@@ -121,9 +123,23 @@ which references the individual per-package repositories under the
     installed for stable device paths — run
     [`mivia_rover_sensing/udev/install_udev_rules.sh`](src/mivia_rover_sensing/udev/install_udev_rules.sh)
     with `sudo` (also done automatically by `system_configuration/reload_services.sh`).
+  - Velodyne VLP-16 3D LiDAR on a wired Ethernet link. The sensor keeps a
+    fixed IP (factory default `192.168.1.201`); the Jetson NIC it is wired to
+    needs a static address in the same subnet. `set_network.sh` installs a
+    persistent NetworkManager profile for this from the `LIDAR_*` variables
+    in [`system_configuration/env/mivia_rover.env`](system_configuration/env/mivia_rover.env)
+    (also applied by `system_configuration/reload_services.sh`, which also
+    installs a `/etc/sysctl.d` drop-in enlarging the UDP receive buffers).
+    Set `LIDAR_IFACE` to the Jetson's wired interface. On the sensor's web UI
+    (`http://192.168.1.201`) set the field of view to the full `0–359°` and,
+    ideally, point its UDP destination at `LIDAR_HOST_IP` instead of the
+    factory broadcast.
 - **Third-party ROS 2 packages:** `robot_localization`, `nav2_*`,
   `ros2_control`, `ros2_controllers`, `diff_drive_controller`,
-  `ros2_socketcan` (pinned to v1.3.0 by the `.repos` manifest).
+  `ros2_socketcan` (pinned to v1.3.0 by the `.repos` manifest). The
+  `velodyne` driver stack (v2.5.1, Humble's released version) is vendored
+  under `mivia_rover_sensing/src/velodyne/`; its system dependencies
+  (`libpcl`, `libpcap`, `yaml-cpp`, …) are pulled in by `rosdep`.
 
 Resolve the ROS-side dependencies with:
 
@@ -209,8 +225,9 @@ The [system_configuration/](system_configuration/) directory packages the
 rover as two systemd services so that it boots autonomously on the Jetson:
 
 - `set-network.service` (oneshot) — configures `can0`/`can1` at 1 Mbit/s
-  via [scripts/set_network.sh](system_configuration/scripts/set_network.sh)
-  and, if enabled, connects to the configured WiFi SSID.
+  via [scripts/set_network.sh](system_configuration/scripts/set_network.sh),
+  brings up the Velodyne VLP-16 static IP on `LIDAR_IFACE`, and, if enabled,
+  connects to the configured WiFi SSID.
 - `mivia-rover-platform.service` — runs
   [scripts/start_mivia_rover.sh](system_configuration/scripts/start_mivia_rover.sh),
   which sources the ROS underlay/overlay and executes
@@ -225,6 +242,7 @@ Runtime behavior is parameterized through
 | `MIVIA_BRINGUP_PACKAGE` / `MIVIA_BRINGUP_LAUNCH` | Package and launch file invoked at boot |
 | `MIVIA_ENABLE_VIZ` | Propagated as `enable_mivia_rover_visualization` |
 | `ENABLE_CAN_BUS` | Gate for `set_network.sh` CAN bring-up |
+| `ENABLE_LIDAR_NET`, `LIDAR_IFACE`, `LIDAR_HOST_IP`, `LIDAR_DEVICE_IP` | Velodyne VLP-16 wired-Ethernet static IP (persistent NetworkManager profile `mivia-lidar`) |
 | `WIFI_AUTO_CONNECT`, `WIFI_SSID`, `WIFI_PASSWORD`, `WIFI_IFNAME`, `WIFI_TIMEOUT` | Optional WiFi auto-join at boot |
 | `RMW_IMPLEMENTATION` | Optional DDS override (e.g. CycloneDDS) |
 

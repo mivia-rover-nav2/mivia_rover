@@ -18,6 +18,9 @@
 #  • Creates and manages /etc/mivia_rover directory structure
 #  • Installs environment configuration with user-specific variables
 #  • Deploys runtime scripts for rover bringup and network configuration
+#    (set_network.sh: CAN, Velodyne VLP-16 static IP via NetworkManager, WiFi)
+#  • Installs kernel network tuning into /etc/sysctl.d/ (larger UDP buffers for
+#    the Velodyne VLP-16 point-cloud stream and DDS)
 #  • Installs sensor udev rules from mivia_rover_sensing/udev/ (stable device
 #    symlinks for the Xsens IMU/GNSS and DWM1001 UWB tag), if present
 #  • Registers and enables systemd services (mivia-rover-platform, set-network)
@@ -64,9 +67,11 @@ readonly INSTALL_ENV_FILE="${INSTALL_ENV_DIR}/mivia_rover.env"
 readonly SRC_ENV_FILE="${SCRIPT_DIR}/env/mivia_rover.env"
 readonly SRC_SCRIPTS_DIR="${SCRIPT_DIR}/scripts"
 readonly SRC_SYSTEMD_DIR="${SCRIPT_DIR}/systemd"
+readonly SRC_SYSCTL_DIR="${SCRIPT_DIR}/sysctl"
 
 readonly SYSTEMD_TARGET_DIR="/etc/systemd/system"
 readonly UDEV_RULES_TARGET_DIR="/etc/udev/rules.d"
+readonly SYSCTL_TARGET_DIR="/etc/sysctl.d"
 
 # Sensor udev rules live in the mivia_rover_sensing repo (vcs-imported under
 # src/), not in this top-level repo - resolved at runtime relative to WS_ROOT.
@@ -222,6 +227,42 @@ install_scripts() {
   log "Installed scripts: ${INSTALL_SCRIPTS_DIR}"
 }
 
+install_sysctl() {
+  # Kernel network tuning (larger UDP buffers for the Velodyne VLP-16 stream
+  # and DDS). Optional: skipped with a log line on hosts without /etc/sysctl.d
+  # or the sysctl binary.
+  if [ ! -d "${SRC_SYSCTL_DIR}" ]; then
+    log "No sysctl dir at ${SRC_SYSCTL_DIR}. Skipping sysctl tuning."
+    return 0
+  fi
+
+  shopt -s nullglob
+  local conf_files=("${SRC_SYSCTL_DIR}"/*.conf)
+  shopt -u nullglob
+
+  if [ "${#conf_files[@]}" -eq 0 ]; then
+    log "No .conf files in ${SRC_SYSCTL_DIR}. Skipping sysctl tuning."
+    return 0
+  fi
+
+  mkdir -p "${SYSCTL_TARGET_DIR}"
+
+  local conf_file dst
+  for conf_file in "${conf_files[@]}"; do
+    dst="${SYSCTL_TARGET_DIR}/$(basename "${conf_file}")"
+    cp -f "${conf_file}" "${dst}"
+    chmod 0644 "${dst}"
+    log "Installed sysctl: ${dst}"
+  done
+
+  if command_exists sysctl; then
+    sysctl --system >/dev/null 2>&1 || log "sysctl --system reported an error (non-fatal)."
+    log "sysctl settings reloaded."
+  else
+    log "sysctl binary not found: settings will apply on next boot."
+  fi
+}
+
 render_unit_template() {
   # Renders a systemd unit template with @PLACEHOLDERS@
   local src="$1"
@@ -349,6 +390,7 @@ main() {
 
   install_env "${WS_ROOT}" "${INV_USER}" "${INV_HOME}"
   install_scripts
+  install_sysctl
   install_udev_rules
   install_systemd_units
 

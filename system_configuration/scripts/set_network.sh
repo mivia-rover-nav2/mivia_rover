@@ -3,8 +3,8 @@
 #
 #  MIVIA Rover - Network Configuration Script
 #  File: set_network.sh
-#  Version: 1.2
-#  Last Updated: February 2026
+#  Version: 1.3
+#  Last Updated: September 2026
 #
 ################################################################################
 
@@ -124,6 +124,89 @@ configure_can() {
     "${ip_bin}" link set "${iface}" up
     log "Configured ${iface}: bitrate=${bitrate}, fd=${fd}"
   done
+}
+
+################################################################################
+# Velodyne VLP-16 LiDAR wired network
+################################################################################
+
+configure_lidar_net() {
+  # The VLP-16 is an Ethernet sensor: it streams UDP from a fixed IP
+  # (LIDAR_DEVICE_IP, factory default 192.168.1.201) and the host NIC it is
+  # wired to must carry a static address in the same subnet. We install a
+  # persistent NetworkManager profile ("mivia-lidar") so the address survives
+  # reboots and link flaps, mirroring how WiFi is handled below.
+  local enable_lidar
+  enable_lidar="$(normalize_bool "${ENABLE_LIDAR_NET:-false}")"
+  if [ "${enable_lidar}" != "true" ]; then
+    log "LiDAR network disabled (ENABLE_LIDAR_NET=false). Skipping LiDAR network configuration."
+    return 0
+  fi
+
+  local iface="${LIDAR_IFACE:-eth0}"
+  local host_ip="${LIDAR_HOST_IP:-192.168.1.100/24}"
+  local con_name="${LIDAR_CONNECTION_NAME:-mivia-lidar}"
+
+  # host_ip must be CIDR (addr/prefix) - nmcli ipv4.addresses wants the prefix.
+  case "${host_ip}" in
+    */[0-9]*) : ;;
+    *) die "LIDAR_HOST_IP must be in CIDR notation (e.g. 192.168.1.100/24), got '${host_ip}'." ;;
+  esac
+
+  command_exists nmcli || die "nmcli not found. NetworkManager is required for LiDAR network configuration."
+
+  if [ ! -d "/sys/class/net/${iface}" ]; then
+    log "LiDAR iface '${iface}' not found in /sys/class/net. Skipping LiDAR network configuration."
+    return 0
+  fi
+
+  log "Configuring LiDAR network: iface='${iface}', host_ip='${host_ip}', profile='${con_name}'"
+
+  # The Jetson AGX Orin's Aquantia AQR113C PHY (10G, no phy_mode in the device
+  # tree) does not auto-negotiate a link with the 100 Mbit/s VLP-16 on the
+  # first try: the interface stays NO-CARRIER until it is bounced. Kick it and
+  # wait (best effort) for the carrier before handing over to NetworkManager.
+  local ip_bin
+  ip_bin="$(_can_get_ip_bin)"
+  "${ip_bin}" link set "${iface}" down >/dev/null 2>&1 || true
+  sleep 1
+  "${ip_bin}" link set "${iface}" up >/dev/null 2>&1 || true
+
+  local waited=0
+  while [ "${waited}" -lt 15 ]; do
+    if [ "$(cat "/sys/class/net/${iface}/carrier" 2>/dev/null || echo 0)" = "1" ]; then
+      log "LiDAR iface '${iface}' link is up after ${waited}s."
+      break
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+  if [ "$(cat "/sys/class/net/${iface}/carrier" 2>/dev/null || echo 0)" != "1" ]; then
+    log "LiDAR iface '${iface}' still NO-CARRIER after ${waited}s (sensor off/unplugged?). Applying config anyway; NM will connect when the link comes up."
+  fi
+
+  if nmcli -t -f NAME con show 2>/dev/null | grep -Fqx "${con_name}"; then
+    nmcli con mod "${con_name}" \
+      connection.interface-name "${iface}" \
+      ipv4.method manual \
+      ipv4.addresses "${host_ip}" \
+      ipv4.gateway "" \
+      ipv4.never-default yes \
+      ipv6.method disabled
+  else
+    nmcli con add type ethernet con-name "${con_name}" ifname "${iface}" \
+      ipv4.method manual \
+      ipv4.addresses "${host_ip}" \
+      ipv4.never-default yes \
+      ipv6.method disabled \
+      connection.autoconnect yes
+  fi
+
+  # (Re)activate so the address is live now, not only after the next boot.
+  nmcli con up "${con_name}" ifname "${iface}" >/dev/null 2>&1 \
+    || log "Could not bring up '${con_name}' now (is the LiDAR/cable connected?). It will auto-connect when the link is up."
+
+  log "LiDAR network configured on ${iface} (${host_ip})."
 }
 
 ################################################################################
@@ -287,8 +370,9 @@ connect_wifi() {
 ################################################################################
 
 main() {
-  # Order: CAN first (fast), then WiFi (may block up to WIFI_TIMEOUT)
+  # Order: CAN first (fast), then LiDAR static IP, then WiFi (may block up to WIFI_TIMEOUT)
   configure_can
+  configure_lidar_net
   connect_wifi
   log "Network bringup completed successfully."
 }
