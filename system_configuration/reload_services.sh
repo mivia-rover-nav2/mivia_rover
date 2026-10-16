@@ -24,6 +24,8 @@
 #  • Installs sensor udev rules from mivia_rover_sensing/udev/ (stable device
 #    symlinks for the Xsens IMU/GNSS and DWM1001 UWB tag), if present
 #  • Registers and enables systemd services (mivia-rover-platform, set-network)
+#    and enables NetworkManager-wait-online so network-online.target really
+#    waits for the wired link before the bringup starts
 #  • Performs systemd daemon reload and service restart
 #  • Configures environment variables:
 #      - MIVIA_ROVER_WS_PATH: Absolute workspace path
@@ -350,6 +352,16 @@ install_systemd_units() {
   done
 
   systemctl daemon-reload
+
+  # The units order themselves After=network-online.target, but that target
+  # only waits for the network when a wait-online service is enabled (it is
+  # disabled by default on the Jetson). Without it the bringup can start before
+  # LIDAR_IFACE has its address and FastDDS binds to localhost only: topics are
+  # then invisible from other machines until the service is restarted.
+  if systemctl cat NetworkManager-wait-online.service >/dev/null 2>&1; then
+    systemctl enable NetworkManager-wait-online.service >/dev/null
+    log "Enabled NetworkManager-wait-online.service."
+  fi
 
   for svc in "${SERVICES[@]}"; do
     systemctl enable "${svc}" >/dev/null

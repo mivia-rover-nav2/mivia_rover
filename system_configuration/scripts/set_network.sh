@@ -136,6 +136,13 @@ configure_lidar_net() {
   # wired to must carry a static address in the same subnet. We install a
   # persistent NetworkManager profile ("mivia-lidar") so the address survives
   # reboots and link flaps, mirroring how WiFi is handled below.
+  #
+  # LIDAR_IFACE may be wired straight to the sensor (no internet on that link)
+  # or to a router/switch that also serves the sensor (e.g. the rover's
+  # Teltonika). In the latter case set LIDAR_GATEWAY/LIDAR_DNS so the Jetson
+  # gets internet over this link (NTRIP corrections, git); leave them empty
+  # for a direct cable, which keeps the profile from ever owning the default
+  # route.
   local enable_lidar
   enable_lidar="$(normalize_bool "${ENABLE_LIDAR_NET:-false}")"
   if [ "${enable_lidar}" != "true" ]; then
@@ -146,6 +153,8 @@ configure_lidar_net() {
   local iface="${LIDAR_IFACE:-eth0}"
   local host_ip="${LIDAR_HOST_IP:-192.168.1.100/24}"
   local con_name="${LIDAR_CONNECTION_NAME:-mivia-lidar}"
+  local gateway="${LIDAR_GATEWAY:-}"
+  local dns="${LIDAR_DNS:-}"
 
   # host_ip must be CIDR (addr/prefix) - nmcli ipv4.addresses wants the prefix.
   case "${host_ip}" in
@@ -160,17 +169,25 @@ configure_lidar_net() {
     return 0
   fi
 
-  log "Configuring LiDAR network: iface='${iface}', host_ip='${host_ip}', profile='${con_name}'"
+  # Router mode (gateway set) may own the default route; direct mode never does.
+  local never_default="yes"
+  [ -n "${gateway}" ] && never_default="no"
+
+  log "Configuring LiDAR network: iface='${iface}', host_ip='${host_ip}', gateway='${gateway:-none}', dns='${dns:-none}', profile='${con_name}'"
 
   # The Jetson AGX Orin's Aquantia AQR113C PHY (10G, no phy_mode in the device
   # tree) does not auto-negotiate a link with the 100 Mbit/s VLP-16 on the
   # first try: the interface stays NO-CARRIER until it is bounced. Kick it and
   # wait (best effort) for the carrier before handing over to NetworkManager.
+  # Only when there is no carrier yet: bouncing a working link drops anything
+  # running over it, e.g. an SSH session through the router.
   local ip_bin
   ip_bin="$(_can_get_ip_bin)"
-  "${ip_bin}" link set "${iface}" down >/dev/null 2>&1 || true
-  sleep 1
-  "${ip_bin}" link set "${iface}" up >/dev/null 2>&1 || true
+  if [ "$(cat "/sys/class/net/${iface}/carrier" 2>/dev/null || echo 0)" != "1" ]; then
+    "${ip_bin}" link set "${iface}" down >/dev/null 2>&1 || true
+    sleep 1
+    "${ip_bin}" link set "${iface}" up >/dev/null 2>&1 || true
+  fi
 
   local waited=0
   while [ "${waited}" -lt 15 ]; do
@@ -190,14 +207,21 @@ configure_lidar_net() {
       connection.interface-name "${iface}" \
       ipv4.method manual \
       ipv4.addresses "${host_ip}" \
-      ipv4.gateway "" \
-      ipv4.never-default yes \
+      ipv4.gateway "${gateway}" \
+      ipv4.dns "${dns}" \
+      ipv4.never-default "${never_default}" \
       ipv6.method disabled
   else
+    # On "add" only pass gateway/DNS when set ("mod" above passes them even
+    # when empty, to clear values left from a previous router setup).
+    local extra=()
+    [ -n "${gateway}" ] && extra+=(ipv4.gateway "${gateway}")
+    [ -n "${dns}" ] && extra+=(ipv4.dns "${dns}")
     nmcli con add type ethernet con-name "${con_name}" ifname "${iface}" \
       ipv4.method manual \
       ipv4.addresses "${host_ip}" \
-      ipv4.never-default yes \
+      "${extra[@]}" \
+      ipv4.never-default "${never_default}" \
       ipv6.method disabled \
       connection.autoconnect yes
   fi
@@ -206,7 +230,7 @@ configure_lidar_net() {
   nmcli con up "${con_name}" ifname "${iface}" >/dev/null 2>&1 \
     || log "Could not bring up '${con_name}' now (is the LiDAR/cable connected?). It will auto-connect when the link is up."
 
-  log "LiDAR network configured on ${iface} (${host_ip})."
+  log "LiDAR network configured on ${iface} (${host_ip}, gateway=${gateway:-none}, dns=${dns:-none})."
 }
 
 ################################################################################

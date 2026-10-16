@@ -130,7 +130,9 @@ which references the individual per-package repositories under the
     in [`system_configuration/env/mivia_rover.env`](system_configuration/env/mivia_rover.env)
     (also applied by `system_configuration/reload_services.sh`, which also
     installs a `/etc/sysctl.d` drop-in enlarging the UDP receive buffers).
-    Set `LIDAR_IFACE` to the Jetson's wired interface. On the sensor's web UI
+    Set `LIDAR_IFACE` to the Jetson's wired interface; when it goes through
+    the rover's Teltonika router (shared with the LiDAR), `LIDAR_GATEWAY` and
+    `LIDAR_DNS` give the Jetson internet over that link. On the sensor's web UI
     (`http://192.168.1.201`) set the field of view to the full `0–359°` and,
     ideally, point its UDP destination at `LIDAR_HOST_IP` instead of the
     factory broadcast.
@@ -242,7 +244,7 @@ Runtime behavior is parameterized through
 | `MIVIA_BRINGUP_PACKAGE` / `MIVIA_BRINGUP_LAUNCH` | Package and launch file invoked at boot |
 | `MIVIA_ENABLE_VIZ` | Propagated as `enable_mivia_rover_visualization` |
 | `ENABLE_CAN_BUS` | Gate for `set_network.sh` CAN bring-up |
-| `ENABLE_LIDAR_NET`, `LIDAR_IFACE`, `LIDAR_HOST_IP`, `LIDAR_DEVICE_IP` | Velodyne VLP-16 wired-Ethernet static IP (persistent NetworkManager profile `mivia-lidar`) |
+| `ENABLE_LIDAR_NET`, `LIDAR_IFACE`, `LIDAR_HOST_IP`, `LIDAR_DEVICE_IP`, `LIDAR_GATEWAY`, `LIDAR_DNS` | Velodyne VLP-16 wired-Ethernet static IP, plus gateway/DNS when behind the rover's router (persistent NetworkManager profile `mivia-lidar`) |
 | `WIFI_AUTO_CONNECT`, `WIFI_SSID`, `WIFI_PASSWORD`, `WIFI_IFNAME`, `WIFI_TIMEOUT` | Optional WiFi auto-join at boot |
 | `RMW_IMPLEMENTATION` | Optional DDS override (e.g. CycloneDDS) |
 
