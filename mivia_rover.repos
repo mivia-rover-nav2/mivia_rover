@@ -2,34 +2,43 @@ repositories:
  mivia_rover_platform:
     type: git
     url: https://github.com/mivia-rover-nav2/mivia_rover_platform.git  
+    version: land-sky-sea
  mivia_rover_description:
     type: git
     url: https://github.com/mivia-rover-nav2/mivia_rover_description.git
+    version: land-sky-sea
  mivia_rover_localization:
     type: git
     url: https://github.com/mivia-rover-nav2/mivia_rover_localization.git
-    version: main
+    version: land-sky-sea
  mivia_rover_sensing:
     type: git
     url: https://github.com/mivia-rover-nav2/mivia_rover_sensing.git
+    version: land-sky-sea
  mivia_rover_mapping:
     type: git
     url: https://github.com/mivia-rover-nav2/mivia_rover_mapping.git
+    version: land-sky-sea
  mivia_rover_bringup:
     type: git
     url: https://github.com/mivia-rover-nav2/mivia_rover_bringup.git
+    version: land-sky-sea
  mivia_rover_visualization:
     type: git
     url: https://github.com/mivia-rover-nav2/mivia_rover_visualization.git
+    version: land-sky-sea
  mivia_rover_nav2_bringup:
     type: git
     url: https://github.com/mivia-rover-nav2/mivia_rover_nav2_bringup.git
+    version: land-sky-sea
  mivia_rover_perception:
     type: git
     url: https://github.com/mivia-rover-nav2/mivia_rover_perception.git
+    version: land-sky-sea
  mivia_rover_can:
     type: git
     url: https://github.com/mivia-rover-nav2/mivia_rover_can.git
+    version: land-sky-sea
  mivia_rover_can/src/ros2_socketcan:
     type: git
     url: https://github.com/autowarefoundation/ros2_socketcan.git
