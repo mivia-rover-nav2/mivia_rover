@@ -11,7 +11,10 @@ This repository hosts the **high-level software stack** (ROS 2 Humble) that
 runs on the onboard Jetson AGX Orin: perception, localization, planning,
 control, and the CAN-based communication with the embedded firmware.
 
-![MiviaRover](media/rover_photo.jpg)
+> If you use MiviaRover in academic work, please cite the reference paper
+> — see [Citation](#citation) below.
+
+![MiviaRover](media/MiviaRoverPhoto.png)
 ---
 
 ## Platform at a Glance
@@ -305,8 +308,26 @@ to the `LICENSE` files inside each `src/<package>/` directory.
 ## Citation
 
 If you use MiviaRover in academic work, please cite the reference paper
-describing the platform. A BibTeX entry will be made available here once
-the paper is published.
+describing the platform:
+
+> T. Adinolfi, E. Amato, V. Carletti, A. Guarini, A. Saggese, M. Vento,
+> "An Integrated Edge-AI Architecture for Unstructured Off-Road
+> Navigation," in *Pattern Recognition. ICPR 2026 International
+> Workshops*, Lecture Notes in Computer Science, Springer, 2026,
+> pp. 532–539. DOI: [10.1007/978-3-032-39518-4_35](https://doi.org/10.1007/978-3-032-39518-4_35)
+
+```bibtex
+@inproceedings{adinolfi2026mivia,
+  author    = {Adinolfi, Teodoro and Amato, Emilio and Carletti, Vincenzo and Guarini, Alessio and Saggese, Alessia and Vento, Mario},
+  title     = {An Integrated Edge-AI Architecture for Unstructured Off-Road Navigation},
+  booktitle = {Pattern Recognition. ICPR 2026 International Workshops},
+  series    = {Lecture Notes in Computer Science},
+  publisher = {Springer},
+  year      = {2026},
+  pages     = {532--539},
+  doi       = {10.1007/978-3-032-39518-4_35}
+}
+```
 
 ---
 
